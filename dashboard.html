@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus VPN Automator — Панель управления</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              950: '#030712',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- React & Babel CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Плавный скроллбар */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(51, 65, 85, 0.8);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 1);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+
+    const INITIAL_SERVERS = [
+      {
+        id: "node-1",
+        config: "vless://e8358eb5-7210-4cf8-982f-68af141b7694@56.69.159.191:53271?security=reality&flow=xtls-rprx-vision&pbk=1P58ZYmo81kP...&sni=www.tesla.com#Malaysia",
+        server: "56.69.159.191",
+        port: 53271,
+        protocol: "vless",
+        country: "Malaysia",
+        city: "Kuala Lumpur",
+        flag: "🇲🇾",
+        security: "Reality (Vision)",
+        ping: 42,
+        status: "active",
+      },
+      {
+        id: "node-2",
+        config: "vless://e2b8b217-cffb-4d66-9b8b-eca6e4334032@13.231.19.51:11690?security=reality&flow=xtls-rprx-vision&pbk=Bv3z0_uFRab...&sni=www.tesla.com#Japan",
+        server: "13.231.19.51",
+        port: 11690,
+        protocol: "vless",
+        country: "Japan",
+        city: "Shibuya, Tokyo",
+        flag: "🇯🇵",
+        security: "Reality (Vision)",
+        ping: 48,
+        status: "active",
+      },
+      {
+        id: "node-3",
+        config: "vless://f053b140-9673-4ac5-bc8b-587bfd2c8fd8@54.255.121.205:43840?security=reality&flow=xtls-rprx-vision&pbk=tDzxVcXg6zz...&sni=www.sony.com#Singapore",
+        server: "54.255.121.205",
+        port: 43840,
+        protocol: "vless",
+        country: "Singapore",
+        city: "Downtown Core",
+        flag: "🇸🇬",
+        security: "Reality (Vision)",
+        ping: 74,
+        status: "active",
+      },
+      {
+        id: "node-4",
+        config: "vless://167ed405-7de9-4bff-b1ea-6e3d49c76b0b@172.238.232.239:32833?security=reality&flow=xtls-rprx-vision&pbk=PaTDdYBrlh1...&sni=www.intel.com#Italy",
+        server: "172.238.232.239",
+        port: 32833,
+        protocol: "vless",
+        country: "Italy",
+        city: "Milan",
+        flag: "🇮🇹",
+        security: "Reality (Vision)",
+        ping: 110,
+        status: "active",
+      },
+      {
+        id: "node-5",
+        config: "vmess://eyJ2IjoiMiIsInBzIjoiR2VybWFueSIsImFkZCI6IjE4OC4yNTMuMjUuMTcyIiwicG9ydCI6IjQ0MyJ9",
+        server: "188.253.25.172",
+        port: 443,
+        protocol: "vmess",
+        country: "Germany",
+        city: "Frankfurt am Main",
+        flag: "🇩🇪",
+        security: "TLS (WS)",
+        ping: 135,
+        status: "active",
+      },
+      {
+        id: "node-6",
+        config: "vless://10de5732-5d62-43bd-80a2-ec678100824a@151.242.169.119:443?security=reality&sni=yidio.com#Norway",
+        server: "151.242.169.119",
+        port: 443,
+        protocol: "vless",
+        country: "Norway",
+        city: "Sandefjord",
+        flag: "🇳🇴",
+        security: "Reality (TCP)",
+        ping: 152,
+        status: "active",
+      }
+    ];
+
+    const INITIAL_LOGS = [
+      { id: "l-1", timestamp: "18:44:15", level: "INFO", message: "[ConfigGenerator] Загружено 19 активных серверов из configs_tested.json" },
+      { id: "l-2", timestamp: "18:44:16", level: "INFO", message: "[ConfigGenerator] Выбран лучший сервер: 56.69.159.191:53271 (42 ms)" },
+      { id: "l-3", timestamp: "18:44:16", level: "INFO", message: "[Sing-box] Ядро успешно запущено на 127.0.0.1:2080 (Mixed HTTP/SOCKS5)" },
+      { id: "l-4", timestamp: "18:44:18", level: "INFO", message: "[Watchdog] Проверка связи через 127.0.0.1:2080: OK (42.4 ms)" },
+      { id: "l-5", timestamp: "18:44:24", level: "INFO", message: "[Watchdog] Проверка связи: OK (43.1 ms) | Потерь: 0%" }
+    ];
+
+    function Dashboard() {
+      const [servers, setServers] = useState(INITIAL_SERVERS);
+      const [activeServerId, setActiveServerId] = useState("node-1");
+      const [isSwitching, setIsSwitching] = useState(false);
+      const [copiedId, setCopiedId] = useState(null);
+      const [searchQuery, setSearchQuery] = useState("");
+      const [sortAsc, setSortAsc] = useState(true);
+      const [daemonActive, setDaemonActive] = useState(true);
+      const [logs, setLogs] = useState(INITIAL_LOGS);
+      const [autoScroll, setAutoScroll] = useState(true);
+      const [selectedLogLevel, setSelectedLogLevel] = useState("ALL");
+      const [uptimeSeconds, setUptimeSeconds] = useState(3842);
+
+      const logsEndRef = useRef(null);
+
+      const currentServer = useMemo(
+        () => servers.find((s) => s.id === activeServerId) || servers[0],
+        [servers, activeServerId]
+      );
+
+      useEffect(() => {
+        const timer = setInterval(() => setUptimeSeconds((p) => p + 1), 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      useEffect(() => {
+        if (!daemonActive) return;
+        const interval = setInterval(() => {
+          setServers((prev) =>
+            prev.map((s) => {
+              if (s.id === activeServerId) {
+                const jitter = Math.floor(Math.random() * 5) - 2;
+                return { ...s, ping: Math.max(25, s.ping + jitter) };
+              }
+              return s;
+            })
+          );
+
+          const timeStr = new Date().toTimeString().split(" ")[0];
+          const jitterMs = (Math.random() * 4 + 40).toFixed(1);
+          setLogs((prev) => [
+            ...prev.slice(-99),
+            {
+              id: "l-" + Date.now(),
+              timestamp: timeStr,
+              level: "INFO",
+              message: `[Watchdog] Запрос к http://www.gstatic.com/generate_204: OK (${jitterMs} ms)`
+            }
+          ]);
+        }, 4500);
+        return () => clearInterval(interval);
+      }, [daemonActive, activeServerId]);
+
+      useEffect(() => {
+        if (autoScroll && logsEndRef.current) {
+          logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+      }, [logs, autoScroll]);
+
+      const handleForceSwitch = () => {
+        if (isSwitching) return;
+        setIsSwitching(true);
+
+        const now = new Date().toTimeString().split(" ")[0];
+        setLogs((p) => [
+          ...p,
+          {
+            id: "l-" + Date.now(),
+            timestamp: now,
+            level: "WARNING",
+            message: "[ManualTrigger] Инициирована принудительная смена узла пользователем..."
+          }
+        ]);
+
+        setTimeout(() => {
+          const currentIndex = servers.findIndex((s) => s.id === activeServerId);
+          const nextIndex = (currentIndex + 1) % servers.length;
+          const nextServer = servers[nextIndex];
+          setActiveServerId(nextServer.id);
+
+          const switchTime = new Date().toTimeString().split(" ")[0];
+          setLogs((p) => [
+            ...p,
+            {
+              id: "l-" + (Date.now() + 1),
+              timestamp: switchTime,
+              level: "INFO",
+              message: `[ConfigGenerator] Сгенерирован config.json -> Узел #${nextIndex + 1} (${nextServer.server})`
+            },
+            {
+              id: "l-" + (Date.now() + 2),
+              timestamp: switchTime,
+              level: "INFO",
+              message: `[Sing-box] Ядро перезапущено на узле [${nextServer.country}] (${nextServer.ping} ms)`
+            }
+          ]);
+          setIsSwitching(false);
+        }, 800);
+      };
+
+      const handleCopyConfig = (id, text) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      };
+
+      const filteredServers = useMemo(() => {
+        return servers
+          .filter(
+            (s) =>
+              s.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              s.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              s.server.includes(searchQuery) ||
+              s.protocol.includes(searchQuery.toLowerCase())
+          )
+          .sort((a, b) => (sortAsc ? a.ping - b.ping : b.ping - a.ping));
+      }, [servers, searchQuery, sortAsc]);
+
+      const filteredLogs = useMemo(() => {
+        if (selectedLogLevel === "ALL") return logs;
+        return logs.filter((l) => l.level === selectedLogLevel);
+      }, [logs, selectedLogLevel]);
+
+      const formatUptime = (seconds) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+          {/* Фоновые градиенты */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-[128px]"></div>
+            <div className="absolute top-1/3 -right-40 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px]"></div>
+          </div>
+
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            {/* Header */}
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-2xl">
+              <div className="flex items-center space-x-3.5">
+                <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                      Nexus VPN Automator
+                    </h1>
+                    <span className="px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                      Sing-box Core
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Автономный конвейер мониторинга и горячего переключения
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2.5 px-3.5 py-1.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+                  <span className="relative flex h-2.5 w-2.5">
+                    {daemonActive ? (
+                      <>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_10px_#10b981]"></span>
+                      </>
+                    ) : (
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    )}
+                  </span>
+                  <span className="font-medium text-slate-300">
+                    {daemonActive ? "Демон активен" : "Демон остановлен"}
+                  </span>
+                </div>
+
+                <div className="hidden md:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-400">
+                  <span>Аптайм:</span>
+                  <span className="font-mono text-slate-200">{formatUptime(uptimeSeconds)}</span>
+                </div>
+
+                <button
+                  onClick={() => setDaemonActive(!daemonActive)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    daemonActive
+                      ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-emerald-400"
+                      : "bg-rose-950/40 hover:bg-rose-900/40 border-rose-800/60 text-rose-400"
+                  }`}
+                >
+                  {daemonActive ? "Пауза" : "Пуск"}
+                </button>
+              </div>
+            </header>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-900/40 backdrop-blur-md border border-slate-800/80">
+                <div className="text-slate-400 text-xs mb-1">Текущий пинг</div>
+                <div className="flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-bold font-mono text-emerald-400">{currentServer.ping}</span>
+                  <span className="text-xs text-slate-400">ms</span>
+                </div>
+                <p className="text-[11px] text-emerald-500/90 mt-1">✓ Оптимальная задержка</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/40 backdrop-blur-md border border-slate-800/80">
+                <div className="text-slate-400 text-xs mb-1">Активных серверов</div>
+                <div className="flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-bold font-mono text-cyan-400">{servers.length}</span>
+                  <span className="text-xs text-slate-400">узлов</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">В пуле configs_tested.json</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/40 backdrop-blur-md border border-slate-800/80">
+                <div className="text-slate-400 text-xs mb-1">Локальный прокси</div>
+                <div className="flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-bold font-mono text-amber-400">2080</span>
+                  <span className="text-xs text-slate-400">Mixed</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">127.0.0.1:2080 (SOCKS5/HTTP)</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900/40 backdrop-blur-md border border-slate-800/80">
+                <div className="text-slate-400 text-xs mb-1">Протокол</div>
+                <div className="flex items-baseline space-x-1.5">
+                  <span className="text-xl font-bold text-indigo-300">XTLS Reality</span>
+                </div>
+                <p className="text-[11px] text-indigo-400/90 mt-1">Anti-DPI Bypass • uTLS</p>
+              </div>
+            </div>
+
+            {/* Current Connection Hero Card */}
+            <section className="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950/80 backdrop-blur-2xl border border-slate-800/80 shadow-2xl">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span>
+                      АКТИВНОЕ ПОДКЛЮЧЕНИЕ
+                    </span>
+                    <span className="text-xs text-slate-400">Ядро: <strong className="text-slate-200">Sing-box v1.9.0</strong></span>
+                  </div>
+
+                  <div className="flex items-center space-x-3.5">
+                    <span className="text-4xl">{currentServer.flag}</span>
+                    <div>
+                      <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                        {currentServer.country}, {currentServer.city}
+                      </h2>
+                      <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400 font-mono">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-200">
+                          {currentServer.server}:{currentServer.port}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-cyan-950/50 border border-cyan-800/40 text-cyan-300 uppercase">
+                          {currentServer.protocol}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300">
+                          {currentServer.security}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                  <div className="text-right pr-2">
+                    <div className="text-xs text-slate-400 mb-0.5">Текущий RTT</div>
+                    <div className="flex items-baseline space-x-1 justify-end">
+                      <span className={`text-3xl font-extrabold font-mono ${currentServer.ping < 50 ? "text-emerald-400" : currentServer.ping < 120 ? "text-amber-400" : "text-rose-400"}`}>
+                        {currentServer.ping}
+                      </span>
+                      <span className="text-xs font-semibold text-slate-400">ms</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500">Минимальный в пуле</div>
+                  </div>
+
+                  <button
+                    onClick={handleForceSwitch}
+                    disabled={isSwitching}
+                    className="inline-flex items-center px-5 py-3 rounded-xl font-medium text-sm text-white bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 active:scale-95 transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50"
+                  >
+                    <svg className={`w-4 h-4 mr-2 ${isSwitching ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>{isSwitching ? "Переключение..." : "Сменить сервер (Failover)"}</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* Grid: Server List + Live Terminal */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Servers list */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>⚡</span> Проверенные узлы ({filteredServers.length})
+                  </h3>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Поиск по стране/IP..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-40 sm:w-52 px-3 py-1.5 text-xs bg-slate-900/80 border border-slate-800 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      onClick={() => setSortAsc(!sortAsc)}
+                      className="px-2.5 py-1.5 text-xs bg-slate-900/80 border border-slate-800 rounded-xl text-slate-300 hover:bg-slate-800"
+                    >
+                      {sortAsc ? "Пинг ↑" : "Пинг ↓"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                  {filteredServers.map((node) => {
+                    const isActive = node.id === activeServerId;
+                    return (
+                      <div
+                        key={node.id}
+                        onClick={() => setActiveServerId(node.id)}
+                        className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-slate-900/90 border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/30"
+                            : "bg-slate-900/40 hover:bg-slate-900/70 border-slate-800/80 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <span className="text-2xl">{node.flag}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-semibold text-slate-100 truncate">{node.country}</span>
+                              <span className="text-xs text-slate-400 hidden sm:inline">• {node.city}</span>
+                              {isActive && (
+                                <span className="px-1.5 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                                  ACTIVE
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-mono truncate flex items-center gap-1.5 mt-0.5">
+                              <span className="uppercase text-cyan-400 font-bold">{node.protocol}</span>
+                              <span>{node.server}:{node.port}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3 ml-2 flex-shrink-0">
+                          <span className={`text-sm font-bold font-mono ${node.ping < 50 ? "text-emerald-400" : node.ping < 120 ? "text-amber-400" : "text-rose-400"}`}>
+                            {node.ping} ms
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyConfig(node.id, node.config);
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700 border border-slate-700 text-slate-300"
+                          >
+                            {copiedId === node.id ? "✓" : "📋"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Terminal Logs */}
+              <div className="lg:col-span-5 flex flex-col space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>💻</span> vpn_daemon.log
+                  </h3>
+                  <div className="flex items-center space-x-1.5">
+                    {["ALL", "INFO", "WARNING"].map((lvl) => (
+                      <button
+                        key={lvl}
+                        onClick={() => setSelectedLogLevel(lvl)}
+                        className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all ${
+                          selectedLogLevel === lvl
+                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                            : "text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800"
+                        }`}
+                      >
+                        {lvl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-[380px] lg:min-h-[440px] flex flex-col rounded-2xl bg-black/80 backdrop-blur-xl border border-slate-800 shadow-2xl overflow-hidden font-mono text-xs">
+                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-900/90 border-b border-slate-800 select-none">
+                    <div className="flex items-center space-x-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+                      <span className="text-[11px] text-slate-400 ml-2">daemon.stdout</span>
+                    </div>
+                    <label className="flex items-center space-x-1 text-[10px] text-slate-400 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={autoScroll}
+                        onChange={(e) => setAutoScroll(e.target.checked)}
+                        className="rounded bg-slate-800 border-slate-700"
+                      />
+                      <span>Автоскролл</span>
+                    </label>
+                  </div>
+
+                  <div className="flex-1 p-3.5 overflow-y-auto space-y-1.5 leading-relaxed">
+                    {filteredLogs.map((log) => {
+                      let levelColor = "text-cyan-400";
+                      if (log.level === "WARNING") levelColor = "text-amber-400";
+                      if (log.level === "ERROR") levelColor = "text-rose-400";
+                      return (
+                        <div key={log.id} className="flex items-start space-x-2 text-[11px] hover:bg-slate-900/40 px-1 rounded">
+                          <span className="text-slate-500 flex-shrink-0 select-none">{log.timestamp}</span>
+                          <span className={`font-bold flex-shrink-0 select-none ${levelColor}`}>[{log.level}]</span>
+                          <span className="text-slate-300 break-all">{log.message}</span>
+                        </div>
+                      );
+                    })}
+                    <div ref={logsEndRef} />
+                  </div>
+
+                  <div className="px-3.5 py-1.5 bg-slate-950/90 border-t border-slate-900 text-[10px] text-slate-500 flex items-center justify-between">
+                    <span>Интервал проверки: 6.0s</span>
+                    <span className="flex items-center">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1 animate-pulse"></span>
+                      Поток активен
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<Dashboard />, document.getElementById("root"));
+  </script>
+</body>
+</html>

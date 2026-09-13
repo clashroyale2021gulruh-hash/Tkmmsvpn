@@ -1,0 +1,17 @@
+[build]
+  command = "echo 'Deploying static VPN download site...' && mkdir -p public && cp -rf public_web/* public/ 2>/dev/null || true"
+  publish = "public"
+
+[build.environment]
+  HUGO_VERSION = "0.147.9"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "*.apk"
+  [headers.values]
+    Content-Type = "application/vnd.android.package-archive"
+    Content-Disposition = "attachment; filename=\"vpn.apk\""

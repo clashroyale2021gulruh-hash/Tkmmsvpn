@@ -1,0 +1,24 @@
+[Unit]
+Description=VPN Watchdog Daemon & Core Manager (Module 4)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Запуск от имени root (если используется TUN режим) или непривилегированного пользователя (для socks/mixed прокси)
+User=root
+WorkingDirectory=/opt/vpn-manager
+ExecStart=/usr/bin/python3 /opt/vpn-manager/vpn_daemon.py --interval 6.0 --threshold 3 --port 2080
+
+# Перезапуск при любых непредвиденных падениях (согласно ТЗ)
+Restart=always
+RestartSec=5s
+
+# Переменные окружения и лимиты файлов
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vpn-daemon
+
+[Install]
+WantedBy=multi-user.target

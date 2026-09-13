@@ -1,0 +1,6 @@
+{
+  "name": "TM VPN",
+  "description": "Быстрый защищенный VPN для Туркменистана с проверенными рабочими серверами и игровыми узлами в России (VLESS/VMess)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
