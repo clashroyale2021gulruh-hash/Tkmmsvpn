@@ -1,5 +1,5 @@
 [build]
-  command = "echo 'Deploying static VPN download site...' && mkdir -p public && cp -rf public_web/* public/ 2>/dev/null || true"
+  command = "echo 'Deploying static VPN download site...' && mkdir -p public && cp -rf public_web/* public/ 2>/dev/null && cp -f app/build/outputs/apk/debug/*.apk public/ 2>/dev/null || true"
   publish = "public"
 
 [build.environment]
@@ -9,9 +9,13 @@
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
+    Cache-Control = "no-cache, must-revalidate"
 
 [[headers]]
   for = "*.apk"
   [headers.values]
     Content-Type = "application/vnd.android.package-archive"
     Content-Disposition = "attachment; filename=\"vpn.apk\""
+    Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+    Pragma = "no-cache"
+    Expires = "0"
